@@ -16,10 +16,6 @@ type Configuration struct {
 type ServerConfig struct {
 	GatewayAddress       string
 	Port                 int
-	CertFile             string
-	KeyFile              string
-	Hosts                []string
-	RoundRobin           bool
 	SessionKey           string
 	SessionEncryptionKey string
 	SendBuf				 int
@@ -51,16 +47,12 @@ type SecurityConfig struct {
 	UserTokenEncryptionKey string
 	UserTokenSigningKey    string
 	VerifyClientIp		   bool
-	EnableUserToken        bool
 }
 
 type ClientConfig struct {
 	NetworkAutoDetect   int
 	BandwidthAutoDetect int
 	ConnectionType      int
-	UsernameTemplate    string
-	SplitUserDomain     bool
-	DefaultDomain       string
 }
 
 func init() {

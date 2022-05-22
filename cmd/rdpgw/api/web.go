@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gorilla/sessions"
 	"github.com/patrickmn/go-cache"
@@ -31,27 +30,19 @@ type Config struct {
 	SessionEncryptionKey []byte
 	PAATokenGenerator    TokenGeneratorFunc
 	UserTokenGenerator   UserTokenGeneratorFunc
-	EnableUserToken      bool
 	OAuth2Config         *oauth2.Config
 	store                *sessions.CookieStore
 	OIDCTokenVerifier    *oidc.IDTokenVerifier
 	stateStore           *cache.Cache
-	Hosts                []string
 	GatewayAddress       string
-	UsernameTemplate     string
 	NetworkAutoDetect    int
 	BandwidthAutoDetect  int
 	ConnectionType       int
-	SplitUserDomain		 bool
-	DefaultDomain		 string
 }
 
 func (c *Config) NewApi() {
 	if len(c.SessionKey) < 32 {
 		log.Fatal("Session key too small")
-	}
-	if len(c.Hosts) < 1 {
-		log.Fatal("Not enough hosts to connect to specified")
 	}
 	c.store = sessions.NewCookieStore(c.SessionKey, c.SessionEncryptionKey)
 	c.stateStore = cache.New(time.Minute*2, 5*time.Minute)
@@ -153,46 +144,19 @@ func (c *Config) HandleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// do a round robin selection for now
-	rand.Seed(time.Now().Unix())
-	host := c.Hosts[rand.Intn(len(c.Hosts))]
-	host = strings.Replace(host, "{{ preferred_username }}", userName, 1)
-
-	// split the username into user and domain
-	var user = userName
-	var domain = c.DefaultDomain
-	if c.SplitUserDomain {
-		creds := strings.SplitN(userName, "@", 2)
-		user = creds[0]
-		if len(creds) > 1 {
-			domain = creds[1]
-		}
+	creds := strings.SplitN(userName, "@", 2)
+	if len(creds) != 2 {
+		log.Printf("preferred_username not found in context")
+		http.Error(w, errors.New("cannot find session or user").Error(), http.StatusInternalServerError)
+		return
 	}
-
-	render := user
-	if c.UsernameTemplate != "" {
-		render = fmt.Sprintf(c.UsernameTemplate)
-		render = strings.Replace(render, "{{ username }}", user, 1)
-		if c.UsernameTemplate == render {
-			log.Printf("Invalid username template. %s == %s", c.UsernameTemplate, user)
-			http.Error(w, errors.New("invalid server configuration").Error(), http.StatusInternalServerError)
-			return
-		}
-	}
+	user := creds[0]
+	host := creds[1]
 
 	token, err := c.PAATokenGenerator(ctx, user, host)
 	if err != nil {
 		log.Printf("Cannot generate PAA token for user %s due to %s", user, err)
 		http.Error(w, errors.New("unable to generate gateway credentials").Error(), http.StatusInternalServerError)
-	}
-
-	if c.EnableUserToken {
-		userToken, err := c.UserTokenGenerator(ctx, user)
-		if err != nil {
-			log.Printf("Cannot generate token for user %s due to %s", user, err)
-			http.Error(w, errors.New("unable to generate gateway credentials").Error(), http.StatusInternalServerError)
-		}
-		render = strings.Replace(render, "{{ token }}", userToken, 1)
 	}
 
 	// authenticated
@@ -211,8 +175,8 @@ func (c *Config) HandleDownload(w http.ResponseWriter, r *http.Request) {
 		"networkautodetect:i:"+strconv.Itoa(c.NetworkAutoDetect)+"\r\n"+
 		"bandwidthautodetect:i:"+strconv.Itoa(c.BandwidthAutoDetect)+"\r\n"+
 		"connection type:i:"+strconv.Itoa(c.ConnectionType)+"\r\n"+
-		"username:s:"+render+"\r\n"+
-		"domain:s:"+domain+"\r\n"+
+		"username:s:"+user+"\r\n"+
+		"domain:s:"+host+"\r\n"+
 		"bitmapcachesize:i:32000\r\n"+
 	        "smart sizing:i:1\r\n"
 

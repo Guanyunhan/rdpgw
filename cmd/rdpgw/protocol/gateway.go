@@ -139,14 +139,14 @@ func (g *Gateway) setSendReceiveBuffers(conn net.Conn) error {
 	fd := int(ptrSysFd.Int())
 
 	if g.ServerConf.ReceiveBuf > 0 {
-		err := syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_RCVBUF, g.ServerConf.ReceiveBuf)
+		err := syscall.SetsockoptInt(syscall.Handle(fd), syscall.SOL_SOCKET, syscall.SO_RCVBUF, g.ServerConf.ReceiveBuf)
 		if err != nil {
 			return wrapSyscallError("setsockopt", err)
 		}
 	}
 
 	if g.ServerConf.SendBuf > 0 {
-		err := syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_SNDBUF, g.ServerConf.SendBuf)
+		err := syscall.SetsockoptInt(syscall.Handle(fd), syscall.SOL_SOCKET, syscall.SO_SNDBUF, g.ServerConf.SendBuf)
 		if err != nil {
 			return wrapSyscallError("setsockopt", err)
 		}
