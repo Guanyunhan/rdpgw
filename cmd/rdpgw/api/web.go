@@ -177,8 +177,9 @@ func (c *Config) HandleDownload(w http.ResponseWriter, r *http.Request) {
 		"connection type:i:"+strconv.Itoa(c.ConnectionType)+"\r\n"+
 		"username:s:"+user+"\r\n"+
 		"domain:s:"+host+"\r\n"+
-		"bitmapcachesize:i:32000\r\n"+
-	        "smart sizing:i:1\r\n"
+		"desktopwidth:i:1920\r\n"+
+		"desktopheight:i:1080\r\n"+
+		"screen mode id:i:1\r\n"
 
 	http.ServeContent(w, r, fn, time.Now(), strings.NewReader(data))
 }
